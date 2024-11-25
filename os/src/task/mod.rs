@@ -20,9 +20,9 @@ use crate::sync::UPSafeCell;
 use lazy_static::*;
 use switch::__switch;
 pub use task::{TaskControlBlock, TaskStatus};
-
+use crate::timer::get_time_us; //newnew
 pub use context::TaskContext;
-
+use crate::config::MAX_SYSCALL_NUM;//newnew 对这个crate有点疑惑
 /// The task manager, where all the tasks are managed.
 ///
 /// Functions implemented on `TaskManager` deals with all task state transitions
@@ -51,22 +51,32 @@ lazy_static! {
     /// Global variable: TASK_MANAGER
     pub static ref TASK_MANAGER: TaskManager = {
         let num_app = get_num_app();
+        
         let mut tasks = [TaskControlBlock {
             task_cx: TaskContext::zero_init(),
             task_status: TaskStatus::UnInit,
+            syscall_num:[0;MAX_SYSCALL_NUM],//newnew
+            first_calltime:0,
+            have_becalled:0,
         }; MAX_APP_NUM];
         for (i, task) in tasks.iter_mut().enumerate() {
             task.task_cx = TaskContext::goto_restore(init_app_cx(i));
             task.task_status = TaskStatus::Ready;
         }
+
+
+        // //newnew
+        // let mut syscall_num:[u32;MAX_SYSCALL_NUM]=[0;MAX_SYSCALL_NUM];
         TaskManager {
             num_app,
             inner: unsafe {
                 UPSafeCell::new(TaskManagerInner {
                     tasks,
                     current_task: 0,
+                    
                 })
             },
+            // syscall_num,
         }
     };
 }
@@ -135,6 +145,32 @@ impl TaskManager {
             panic!("All applications completed!");
         }
     }
+
+    //newnew
+    fn update_syscall_num(&self,syscall_id:usize){
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        if inner.tasks[current].have_becalled==0{
+            inner.tasks[current].have_becalled=1;
+            inner.tasks[current].first_calltime=get_time_us();
+        }
+        inner.tasks[current].syscall_num[syscall_id] += 1;
+    }
+
+
+    //newnew
+    fn get_syscall_num(&self)->[u32;MAX_SYSCALL_NUM]{
+        let inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current].syscall_num
+    }
+    //newnew
+    fn get_first_calltime(&self)-> usize{
+        let inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current].first_calltime
+    }
+    
 }
 
 /// Run the first task in task list.
@@ -168,4 +204,21 @@ pub fn suspend_current_and_run_next() {
 pub fn exit_current_and_run_next() {
     mark_current_exited();
     run_next_task();
+}
+
+//newnew
+/// update syscall num
+pub fn update_syscall_num(syscall_id:usize){
+    TASK_MANAGER.update_syscall_num(syscall_id);
+}
+
+//newnew
+/// get syscall num
+pub fn get_syscall_num() -> [u32;MAX_SYSCALL_NUM]{
+    TASK_MANAGER.get_syscall_num()
+}
+//newnew
+/// get firstcall num
+pub fn get_first_calltime() -> usize{
+    TASK_MANAGER.get_first_calltime()
 }
