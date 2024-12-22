@@ -240,3 +240,38 @@ pub fn get_syscall_num() -> [u32;MAX_SYSCALL_NUM]{
 pub fn get_first_calltime() -> usize{
     TASK_MANAGER.get_first_calltime()
 }
+
+
+use crate::mm::{VirtPageNum, PageTableEntry , VirtAddr, MapPermission};
+/// get page table
+pub fn get_current_task_page_table(vpn: VirtPageNum) -> Option<PageTableEntry> {
+    let inner = TASK_MANAGER.inner.exclusive_access();
+    let current = inner.current_task;
+    inner.tasks[current].memory_set.translate(vpn)
+}
+
+/// create new map
+pub fn create_new_map_area(start_va: VirtAddr, end_va: VirtAddr, perm: MapPermission) {
+    let mut inner = TASK_MANAGER.inner.exclusive_access();
+    let current = inner.current_task;
+    inner.tasks[current].memory_set.insert_framed_area(start_va, end_va, perm);
+}
+
+use crate::mm::VPNRange;
+/// unmap 这里似乎需要考虑参数错误的时候进行回收
+pub fn unmap_consecutive_area(vpns: VPNRange) -> isize {
+    let mut inner = TASK_MANAGER.inner.exclusive_access();
+    let current = inner.current_task;
+    let mut flag=0;
+    for vpn in vpns {
+        if let Some(pte) = inner.tasks[current].memory_set.translate(vpn) {
+            if !pte.is_valid() {
+                flag=-1;
+                continue;
+            }
+            inner.tasks[current].memory_set.get_page_table().unmap(vpn);// 这里为什么不能拆开？
+        } 
+    }
+    flag
+}
+    

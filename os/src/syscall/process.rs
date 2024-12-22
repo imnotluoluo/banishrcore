@@ -3,6 +3,7 @@ use crate::{
     config::MAX_SYSCALL_NUM,
     task::{
         change_program_brk,exit_current_and_run_next, suspend_current_and_run_next, TaskStatus,get_syscall_num,get_first_calltime,
+        get_current_task_page_table,create_new_map_area,unmap_consecutive_area,
     },
 };
 
@@ -67,28 +68,69 @@ pub fn sys_get_time(_ts: *mut TimeVal, _tz: usize) -> isize {
 /// HINT: You might reimplement it with virtual memory management.
 /// HINT: What if [`TaskInfo`] is splitted by two pages ?
 pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
-    // trace!("kernel: sys_task_info NOT IMPLEMENTED YET!");
-    // -1
-    unsafe{
-        *_ti = TaskInfo {
-            status: TaskStatus::Running,
-            syscall_times: get_syscall_num(),
-            time: get_time_us()/1000-get_first_calltime()/1000,
-        };
+
+
+    let task_info = TaskInfo {
+        status: TaskStatus::Running,
+        syscall_times: get_syscall_num(),
+        time: get_time_us()/1000-get_first_calltime()/1000,
+    };//ch3
+
+    let buffers = translated_byte_buffer(
+        current_user_token(),
+        _ti as *const u8, core::mem::size_of::<TaskInfo>()
+    );
+    
+    let mut task_info_ptr = &task_info as *const _ as *const u8;
+    for buffer in buffers {
+        unsafe {
+            task_info_ptr.copy_to(buffer.as_mut_ptr(), buffer.len());
+            task_info_ptr = task_info_ptr.add(buffer.len());
+        }
     }
+    
     0
 }
 
 // YOUR JOB: Implement mmap.
+use crate::config::PAGE_SIZE;
+use crate::mm::is_mem_sufficient;
+use crate::mm::{VPNRange, VirtAddr, VirtPageNum, MapPermission};
 pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
-    trace!("kernel: sys_mmap NOT IMPLEMENTED YET!");
-    -1
+    // trace!("kernel: sys_mmap NOT IMPLEMENTED YET!");
+    // -1
+    if _start % PAGE_SIZE != 0 || _port & !0x7 != 0 ||_port & 0x7 ==0{
+        return -1;
+    }
+    if !is_mem_sufficient(_len) {
+        return -1;
+    }
+    let start_va: VirtPageNum = VirtAddr::from(_start).floor();
+    let end_va: VirtPageNum = VirtAddr::from(_start + _len).ceil();
+    let vpns = VPNRange::new(start_va, end_va);
+    for vpn in vpns {
+       if let Some(pte) = get_current_task_page_table(vpn) {
+            if pte.is_valid() {
+                return -1;
+            }
+       }
+    }
+    create_new_map_area(
+        start_va.into(),
+        end_va.into(),
+        MapPermission::from_bits_truncate((_port << 1) as u8) | MapPermission::U
+    );
+    0
 }
 
 // YOUR JOB: Implement munmap.
 pub fn sys_munmap(_start: usize, _len: usize) -> isize {
-    trace!("kernel: sys_munmap NOT IMPLEMENTED YET!");
-    -1
+    // trace!("kernel: sys_munmap NOT IMPLEMENTED YET!");
+    // -1
+    let start_va: VirtPageNum = VirtAddr::from(_start).floor();
+    let end_va: VirtPageNum = VirtAddr::from(_start + _len).ceil();
+    let vpns = VPNRange::new(start_va, end_va);
+    unmap_consecutive_area(vpns)
 }
 /// change data segment size
 pub fn sys_sbrk(size: i32) -> isize {
