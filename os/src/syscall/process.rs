@@ -42,14 +42,23 @@ pub fn sys_yield() -> isize {
 /// HINT: You might reimplement it with virtual memory management.
 /// HINT: What if [`TimeVal`] is splitted by two pages ?
 use crate::timer::get_time_us;
+use crate::task::current_user_token;
+use core::mem::size_of;
+use crate::mm::translated_byte_buffer;
 pub fn sys_get_time(_ts: *mut TimeVal, _tz: usize) -> isize {
-    trace!("kernel: sys_get_time");
+    // trace!("kernel: sys_get_time");
     let us = get_time_us();
-    unsafe {
-        *_ts = TimeVal {
-            sec: us / 1_000_000,
-            usec: us % 1_000_000,
-        };
+    let buffers = translated_byte_buffer(current_user_token(), _ts as *const u8, size_of::<TimeVal>());
+    let time_val = TimeVal {
+        sec: us / 1_000_000,
+        usec: us % 1_000_000,
+    };
+    let mut time_val_ptr = &time_val as *const _ as *const u8;
+    for buffer in buffers {
+        unsafe {
+            time_val_ptr.copy_to(buffer.as_mut_ptr(), buffer.len());
+            time_val_ptr = time_val_ptr.add(buffer.len());
+        }
     }
     0
 }
