@@ -20,8 +20,9 @@ use crate::trap::TrapContext;
 use alloc::vec::Vec;
 use lazy_static::*;
 use switch::__switch;
+use crate::timer::get_time_us; //newnew
 pub use task::{TaskControlBlock, TaskStatus};
-
+use crate::config::MAX_SYSCALL_NUM;
 pub use context::TaskContext;
 
 /// The task manager, where all the tasks are managed.
@@ -153,6 +154,28 @@ impl TaskManager {
             panic!("All applications completed!");
         }
     }
+
+    fn update_syscall_num(&self,syscall_id:usize){
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        if inner.tasks[current].have_becalled==0{
+            inner.tasks[current].have_becalled=1;
+            inner.tasks[current].first_calltime=get_time_us();
+        }
+        inner.tasks[current].syscall_num[syscall_id] += 1;
+    }
+    //newnew
+    fn get_syscall_num(&self)->[u32;MAX_SYSCALL_NUM]{
+        let inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current].syscall_num
+    }
+    //newnew
+    fn get_first_calltime(&self)-> usize{
+        let inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current].first_calltime
+    }
 }
 
 /// Run the first task in task list.
@@ -201,4 +224,19 @@ pub fn current_trap_cx() -> &'static mut TrapContext {
 /// Change the current 'Running' task's program break
 pub fn change_program_brk(size: i32) -> Option<usize> {
     TASK_MANAGER.change_current_program_brk(size)
+}
+
+/// update syscall num
+pub fn update_syscall_num(syscall_id:usize){
+    TASK_MANAGER.update_syscall_num(syscall_id);
+}
+//newnew
+/// get syscall num
+pub fn get_syscall_num() -> [u32;MAX_SYSCALL_NUM]{
+    TASK_MANAGER.get_syscall_num()
+}
+//newnew
+/// get firstcall num
+pub fn get_first_calltime() -> usize{
+    TASK_MANAGER.get_first_calltime()
 }
