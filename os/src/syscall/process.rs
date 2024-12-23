@@ -127,7 +127,7 @@ pub fn sys_get_time(_ts: *mut TimeVal, _tz: usize) -> isize {
     //     "kernel:pid[{}] sys_get_time NOT IMPLEMENTED",
     //     current_task().unwrap().pid.0
     // );
-    -1
+    // -1
     let us = get_time_us();
     let buffers = translated_byte_buffer(current_user_token(), _ts as *const u8, size_of::<TimeVal>());
     let time_val = TimeVal {
@@ -152,7 +152,7 @@ pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
     //     "kernel:pid[{}] sys_task_info NOT IMPLEMENTED",
     //     current_task().unwrap().pid.0
     // );
-    -1
+    // -1
     let task_info = TaskInfo {
         status: TaskStatus::Running,
         syscall_times: current_task().unwrap().get_syscall_num(),
