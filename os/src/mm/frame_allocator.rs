@@ -116,6 +116,14 @@ pub fn frame_dealloc(ppn: PhysPageNum) {
     FRAME_ALLOCATOR.exclusive_access().dealloc(ppn);
 }
 
+use crate::config::PAGE_SIZE;
+/// Check if the remaining physical memory is sufficient
+pub fn is_mem_sufficient(_len: usize) -> bool {
+    let fa = FRAME_ALLOCATOR.exclusive_access();
+    let page_cnt = fa.end - fa.current + fa.recycled.len();
+    (_len + PAGE_SIZE - 1) / PAGE_SIZE <= page_cnt
+}
+
 #[allow(unused)]
 /// a simple test for frame allocator
 pub fn frame_allocator_test() {

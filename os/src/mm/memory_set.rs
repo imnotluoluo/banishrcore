@@ -270,7 +270,7 @@ impl MemorySet {
     pub fn recycle_data_pages(&mut self) {
         self.areas.clear();
     }
-
+    
     /// shrink the area to new_end
     #[allow(unused)]
     pub fn shrink_to(&mut self, start: VirtAddr, new_end: VirtAddr) -> bool {
@@ -299,6 +299,11 @@ impl MemorySet {
         } else {
             false
         }
+    }
+
+    /// get page_table
+    pub fn get_page_table(&mut self) -> &mut PageTable {
+        &mut self.page_table
     }
 }
 /// map area structure, controls a contiguous piece of virtual memory

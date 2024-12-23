@@ -9,6 +9,7 @@ use crate::{
         add_task, current_task, current_user_token, exit_current_and_run_next,
         suspend_current_and_run_next, TaskStatus,
         // get_syscall_num,get_first_calltime,
+        get_current_task_page_table,create_new_map_area,unmap_consecutive_area,
     },
 };
 
@@ -174,21 +175,51 @@ pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
 }
 
 /// YOUR JOB: Implement mmap.
+use crate::config::PAGE_SIZE;
+use crate::mm::is_mem_sufficient;
+use crate::mm::{VPNRange, VirtAddr, VirtPageNum, MapPermission};
 pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
-    trace!(
-        "kernel:pid[{}] sys_mmap NOT IMPLEMENTED",
-        current_task().unwrap().pid.0
+    // trace!(
+    //     "kernel:pid[{}] sys_mmap NOT IMPLEMENTED",
+    //     current_task().unwrap().pid.0
+    // );
+    // -1
+    if _start % PAGE_SIZE != 0 || _port & !0x7 != 0 ||_port & 0x7 ==0{
+        return -1;
+    }
+    if !is_mem_sufficient(_len) {
+        return -1;
+    }
+    let start_va: VirtPageNum = VirtAddr::from(_start).floor();
+    let end_va: VirtPageNum = VirtAddr::from(_start + _len).ceil();
+    let vpns = VPNRange::new(start_va, end_va);
+    for vpn in vpns {
+       if let Some(pte) = get_current_task_page_table(vpn) {
+            if pte.is_valid() {
+                return -1;
+            }
+       }
+    }
+    create_new_map_area(
+        start_va.into(),
+        end_va.into(),
+        MapPermission::from_bits_truncate((_port << 1) as u8) | MapPermission::U
     );
-    -1
+    0
 }
 
 /// YOUR JOB: Implement munmap.
 pub fn sys_munmap(_start: usize, _len: usize) -> isize {
-    trace!(
-        "kernel:pid[{}] sys_munmap NOT IMPLEMENTED",
-        current_task().unwrap().pid.0
-    );
-    -1
+    // trace!(
+    //     "kernel:pid[{}] sys_munmap NOT IMPLEMENTED",
+    //     current_task().unwrap().pid.0
+    // );
+    // -1
+    let start_va: VirtPageNum = VirtAddr::from(_start).floor();
+    let end_va: VirtPageNum = VirtAddr::from(_start + _len).ceil();
+    let vpns = VPNRange::new(start_va, end_va);
+    unmap_consecutive_area(vpns)
+    
 }
 
 /// change data segment size
