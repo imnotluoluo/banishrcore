@@ -3,7 +3,7 @@
 
 2.仿照sys_fork和sys_exec来实现sys_spawn
 
-3.
+3.在taskcontrolblockinner中维护prio和stride变量，在进程调度fetch时找到stride最小进程并更新stride，此外完成sys_set_priority系统调用即可。
 
 ## 荣誉准则
 
