@@ -10,6 +10,7 @@ pub struct TaskManager {
 }
 
 /// A simple FIFO scheduler.
+use crate::config::BIGSTRIDE;
 impl TaskManager {
     ///Creat an empty TaskManager
     pub fn new() -> Self {
@@ -23,7 +24,25 @@ impl TaskManager {
     }
     /// Take a process out of the ready queue
     pub fn fetch(&mut self) -> Option<Arc<TaskControlBlock>> {
-        self.ready_queue.pop_front()
+        // self.ready_queue.pop_front()
+        let mut id=0;
+        let mut min_stride = isize::MAX;//设置小点还不行
+        for (i, task) in self.ready_queue.iter().enumerate() {
+            let inner = task.inner_exclusive_access();
+            if inner.stride < min_stride {
+                min_stride = inner.stride;
+                id = i;
+            }
+        }
+        if min_stride == isize::MAX {
+            None
+        } else{
+            if let Some(task)=self.ready_queue.get(id){
+                let mut inner=task.inner_exclusive_access();
+                inner.stride+=BIGSTRIDE/inner.prio;
+            }
+            self.ready_queue.remove(id)
+        }
     }
 }
 
