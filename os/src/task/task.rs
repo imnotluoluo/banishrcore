@@ -11,6 +11,9 @@ use alloc::vec;
 use alloc::vec::Vec;
 use core::cell::RefMut;
 
+use crate::config::MAX_SYSCALL_NUM;
+use crate::timer::get_time_us;
+
 /// Task control block structure
 ///
 /// Directly save the contents that will not change during running
@@ -35,6 +38,26 @@ impl TaskControlBlock {
     pub fn get_user_token(&self) -> usize {
         let inner = self.inner_exclusive_access();
         inner.memory_set.token()
+    }
+
+    /// update syscall num
+    pub fn update_syscall_num(&self,syscall_id:usize){
+        let mut inner = self.inner_exclusive_access();
+        if inner.have_becalled==0{
+            inner.have_becalled=1;
+            inner.first_calltime=get_time_us();
+        }
+        inner.syscall_num[syscall_id] += 1;
+    }
+    /// get syscall num
+    pub fn get_syscall_num(&self)->[u32;MAX_SYSCALL_NUM]{
+        let inner = self.inner_exclusive_access();
+        inner.syscall_num
+    }
+    /// get first calltime
+    pub fn get_first_calltime(&self)-> usize{
+        let inner = self.inner_exclusive_access();
+        inner.first_calltime
     }
 }
 
@@ -71,6 +94,13 @@ pub struct TaskControlBlockInner {
 
     /// Program break
     pub program_brk: usize,
+
+     /// The num of syscall times
+     pub syscall_num:[u32;MAX_SYSCALL_NUM],
+     /// first syscall time
+     pub first_calltime:usize,
+     /// have be called
+     pub have_becalled:u32,
 }
 
 impl TaskControlBlockInner {
@@ -135,6 +165,10 @@ impl TaskControlBlock {
                     ],
                     heap_bottom: user_sp,
                     program_brk: user_sp,
+
+                    syscall_num:[0;MAX_SYSCALL_NUM],//newnew
+                    first_calltime:0,
+                    have_becalled:0,
                 })
             },
         };
@@ -216,6 +250,9 @@ impl TaskControlBlock {
                     fd_table: new_fd_table,
                     heap_bottom: parent_inner.heap_bottom,
                     program_brk: parent_inner.program_brk,
+                    syscall_num:[0;MAX_SYSCALL_NUM],//newnew
+                    first_calltime:0,
+                    have_becalled:0,
                 })
             },
         });
