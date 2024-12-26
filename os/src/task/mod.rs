@@ -120,3 +120,35 @@ lazy_static! {
 pub fn add_initproc() {
     add_task(INITPROC.clone());
 }
+
+use crate::mm::{VirtPageNum, PageTableEntry , VirtAddr, MapPermission};
+/// get page table
+pub fn get_current_task_page_table(vpn: VirtPageNum) -> Option<PageTableEntry> {
+    
+    let task = current_task().unwrap();
+    let inner = task.inner_exclusive_access();
+    inner.memory_set.translate(vpn)
+}
+/// create new map
+pub fn create_new_map_area(start_va: VirtAddr, end_va: VirtAddr, perm: MapPermission) {
+    let task = current_task().unwrap();
+    let mut inner = task.inner_exclusive_access();
+    inner.memory_set.insert_framed_area(start_va, end_va, perm);
+}
+use crate::mm::VPNRange;
+/// unmap 这里似乎需要考虑参数错误的时候进行回收
+pub fn unmap_consecutive_area(vpns: VPNRange) -> isize {
+    let task = current_task().unwrap();
+    let mut inner = task.inner_exclusive_access();
+    let mut flag=0;
+    for vpn in vpns {
+        if let Some(pte) = inner.memory_set.translate(vpn) {
+            if !pte.is_valid() {
+                flag=-1;
+                continue;
+            }
+            inner.memory_set.get_page_table().unmap(vpn);// 这里为什么不能拆开？
+        } 
+    }
+    flag
+}
