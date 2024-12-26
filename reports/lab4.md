@@ -1,9 +1,6 @@
 ## 编程作业
-1.首先完成sys_write,sys_task_info,sys_mmap,sys_munmap的迁移，sys_write与lab2的实现一致，剩下三个需要用current_task来找到当前正在运行的任务。
-
-2.仿照sys_fork和sys_exec来实现sys_spawn
-
-3.在taskcontrolblockinner中维护prio和stride变量，在进程调度fetch时找到stride最小进程并更新stride，此外完成sys_set_priority系统调用即可。
+1.首先完成sys_write,sys_task_info,sys_mmap,sys_munmap的迁移，与ch5的实现完全一致
+2.对于sys_spawn，由于文件系统的实现，迁移需要略作修改，基本上参考sys_exec的变动即可完成
 
 ## 荣誉准则
 
