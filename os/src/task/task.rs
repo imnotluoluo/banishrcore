@@ -101,6 +101,11 @@ pub struct TaskControlBlockInner {
      pub first_calltime:usize,
      /// have be called
      pub have_becalled:u32,
+
+     /// stride
+    pub stride:isize,
+    /// priority
+    pub prio:isize,
 }
 
 impl TaskControlBlockInner {
@@ -123,6 +128,10 @@ impl TaskControlBlockInner {
             self.fd_table.push(None);
             self.fd_table.len() - 1
         }
+    }
+
+    pub fn set_prio(&mut self, prio: isize) {
+        self.prio = prio;
     }
 }
 
@@ -169,6 +178,9 @@ impl TaskControlBlock {
                     syscall_num:[0;MAX_SYSCALL_NUM],//newnew
                     first_calltime:0,
                     have_becalled:0,
+
+                    stride:0,
+                    prio:16,
                 })
             },
         };
@@ -253,6 +265,8 @@ impl TaskControlBlock {
                     syscall_num:[0;MAX_SYSCALL_NUM],//newnew
                     first_calltime:0,
                     have_becalled:0,
+                    stride:0,
+                    prio:16,
                 })
             },
         });
@@ -341,6 +355,8 @@ impl TaskControlBlock {
                     syscall_num:[0;MAX_SYSCALL_NUM],//newnew
                     first_calltime:0,
                     have_becalled:0,
+                    stride:0,
+                    prio:16,
                 })
             },
             

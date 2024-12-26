@@ -1,5 +1,5 @@
 ## 编程作业
-1.首先完成sys_write,sys_task_info,sys_mmap,sys_munmap的迁移，与ch5的实现完全一致
+1.首先完成sys_write,sys_task_info,sys_mmap,sys_munmap以及stride调度算法的迁移，与ch5的实现完全一致
 2.对于sys_spawn，由于文件系统的实现，迁移需要略作修改，基本上参考sys_exec的变动即可完成
 
 ## 荣誉准则
