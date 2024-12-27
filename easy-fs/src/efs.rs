@@ -5,6 +5,8 @@ use super::{
 use crate::BLOCK_SZ;
 use alloc::sync::Arc;
 use spin::Mutex;
+
+use core::mem::size_of;
 ///An easy file system on block
 pub struct EasyFileSystem {
     ///Real device
@@ -147,5 +149,13 @@ impl EasyFileSystem {
             &self.block_device,
             (block_id - self.data_area_start_block) as usize,
         )
+    }
+
+
+    /// get inode
+    pub fn get_ino(&self, block_id: usize, block_offset: usize) -> usize {
+        let inode_size = size_of::<DiskInode>();
+        let inode_cnt = (BLOCK_SZ / inode_size) as usize;
+        (block_id - self.inode_area_start_block as usize) * inode_cnt + block_offset / inode_size
     }
 }
